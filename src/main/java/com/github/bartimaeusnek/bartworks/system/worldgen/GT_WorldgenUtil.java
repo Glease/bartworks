@@ -22,9 +22,12 @@
 
 package com.github.bartimaeusnek.bartworks.system.worldgen;
 
+import com.github.bartimaeusnek.bartworks.common.configs.ConfigHandler;
+import gnu.trove.list.array.TShortArrayList;
 import gregtech.api.GregTech_API;
 import net.minecraft.block.Block;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public class GT_WorldgenUtil {
@@ -67,9 +70,7 @@ public class GT_WorldgenUtil {
             {},
     };
 
-    private static boolean initialisized;
-
-    private static void init(){
+    static {
 
         for (int j = 1; j < 5; j++) {
             GT_WorldgenUtil.METAFORTIERS_MACHINE[j+1]=new short[GT_WorldgenUtil.METAFORTIERS_MACHINE[1].length];
@@ -77,7 +78,28 @@ public class GT_WorldgenUtil {
                 GT_WorldgenUtil.METAFORTIERS_MACHINE[j+1][i]= (short) (GT_WorldgenUtil.METAFORTIERS_MACHINE[1][i]+j);
             }
         }
-        GT_WorldgenUtil.initialisized =true;
+
+        removeBlackListed(METAFORTIERS_BUFFER);
+        removeBlackListed(METAFORTIERS_CABLE);
+        removeBlackListed(METAFORTIERS_ENERGY);
+        removeBlackListed(METAFORTIERS_MACHINE);
+    }
+
+    private static void removeBlackListed(short[][] lists) {
+        TShortArrayList tmp = new TShortArrayList();
+
+        for (int i = 0; i < lists.length; i++) {
+            tmp.resetQuick();
+            for (short id : lists[i]) {
+                if (Arrays.binarySearch(ConfigHandler.ruinBlackList, id) < 0)
+                    tmp.add(id);
+            }
+            if (tmp.isEmpty())
+                lists[i] = new short[] {ConfigHandler.ruinBlackListReplacement}; // replace with bronze machine hull if fully blacklisted
+            else if (tmp.size() < lists[i].length)
+                lists[i] = tmp.toArray();
+            // else no change
+        }
     }
 
     public static short getGenerator(Random rand,int tier){
@@ -96,8 +118,6 @@ public class GT_WorldgenUtil {
     }
 
     public static short getMachine(Random rand,int tier){
-        if (!GT_WorldgenUtil.initialisized)
-            GT_WorldgenUtil.init();
         short meta = GT_WorldgenUtil.METAFORTIERS_MACHINE[tier][rand.nextInt(GT_WorldgenUtil.METAFORTIERS_MACHINE[tier].length)];
         return GregTech_API.METATILEENTITIES[meta] != null ? meta : GT_WorldgenUtil.getMachine(rand,tier);
     }
